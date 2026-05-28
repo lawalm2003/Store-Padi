@@ -1,0 +1,28 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Every 6 hours
+    - cron: '0 */6 * * *'
+
+  workflow_dispatch:
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY }}
+
+    steps:
+      - name: Ping Supabase
+        run: |
+          url="${SUPABASE_URL}/rest/v1/"
+
+          echo "Pinging Supabase at $url"
+
+          curl -s -o /dev/null -w "HTTP status: %{http_code}\n" \
+            -H "apikey: ${SUPABASE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_KEY}" \
+            "$url"
