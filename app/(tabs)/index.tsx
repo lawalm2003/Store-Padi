@@ -1,98 +1,180 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import HomeContent from '@/components/home/HomeContent';
+import HomeHeader from '@/components/home/HomeHeader';
+import LowStockModal from '@/components/home/LowStockBottomSheet';
+import ProductCardSkeleton from '@/components/Loaders/ProductCardSkeleton';
+import SalesCard from '@/components/sales/SalesCard';
+import { ThemedText } from '@/components/ThemedText';
+import { ThemedView } from '@/components/ThemedView';
+import useAppTheme from '@/hooks/useAppTheme';
+import { useDashboardStats, useSales } from '@/hooks/useData';
+import { useToggle } from '@/hooks/useToggle';
+import { useAuth } from '@/Providers/AuthContext';
+import { DashboardMetrics } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import React, { useCallback, useMemo, useState } from 'react';
+import {
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const { colors } = useAppTheme();
+  const { shop } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  // ── Data ─────────────────────────────────────────────
+  const {
+    data: sales = [],
+    isLoading: salesLoading,
+    isFetching: salesFetching,
+    refetch: refetchSales,
+  } = useSales(shop?.id);
+
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    isFetching: statsFetching,
+    refetch: refetchStats,
+  } = useDashboardStats(shop?.id);
+
+  const defaultStats: DashboardMetrics = {
+    totalRevenue: 0,
+    totalProfit: 0,
+    totalProducts: 0,
+    lowStockCount: 0,
+    salesToday: 0,
+    transactionsToday: 0,
+    revenueChangePercent: 0,
+    profitMarginPercent: 0,
+  };
+  const dashStats = stats ?? defaultStats;
+
+  const recentSales = useMemo(() => sales.slice(0, 8), [sales]);
+
+  const isLoading = salesLoading || statsLoading;
+  const isFetching = salesFetching || statsFetching;
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+
+    try {
+      await Promise.all([refetchSales(), refetchStats()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetchSales, refetchStats]);
+
+  const { value, toggle } = useToggle();
+
+  return (
+    <ThemedView style={styles.container}>
+      <HomeHeader shopName={shop?.name || ''} />
+
+      <FlatList
+        data={recentSales}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.cardSpacing}>
+            <SalesCard sale={item} />
+          </View>
+        )}
+        ListHeaderComponent={
+          <>
+            <HomeContent data={dashStats} onOpenModal={toggle} />
+
+            <View style={styles.sectionHeader}>
+              <ThemedText style={styles.sectionTitle}>Recent Sales</ThemedText>
+
+              <TouchableOpacity onPress={() => router.push('/(tabs)/sale')}>
+                <ThemedText style={[styles.seeAll, { color: colors.primary }]}>
+                  See all
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          </>
+        }
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps='handled'
+        scrollEnabled
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        ListEmptyComponent={
+          isLoading || isFetching ? (
+            <ProductCardSkeleton />
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons
+                name='receipt-outline'
+                size={48}
+                color={colors.border}
+              />
+              <ThemedText style={[styles.emptyTitle, { color: colors.text }]}>
+                No sales recorded
+              </ThemedText>
+              <ThemedText
+                style={[styles.emptySubtitle, { color: colors.text3 }]}
+              >
+                Once you add a sale, it will appear here.
+              </ThemedText>
+            </View>
+          )
+        }
+      />
+      <LowStockModal visible={value} onClose={toggle} />
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
   },
-  stepContainer: {
-    gap: 8,
+
+  content: {
+    paddingBottom: 24,
+  },
+
+  cardSpacing: {
+    paddingHorizontal: 16,
+  },
+
+  seeAll: {
+    fontSize: 14,
+    lineHeight: 16,
+    fontWeight: '500',
+  },
+
+  sectionHeader: {
+    paddingHorizontal: 16,
     marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  emptySubtitle: {
+    fontSize: 13,
   },
 });

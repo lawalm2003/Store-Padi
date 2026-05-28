@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "prove-it",
-    "slug": "prove-it",
+    "name": "StorePadi",
+    "slug": "storepadi",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "proveit",
+    "scheme": "storepadi",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

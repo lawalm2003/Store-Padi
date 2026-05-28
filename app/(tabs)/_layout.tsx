@@ -1,35 +1,58 @@
+import CustomTabBar from '@/components/CustomTab';
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import React from 'react';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+type TabConfig = {
+  name: string;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  iconActive: keyof typeof Ionicons.glyphMap;
+};
+
+export const TABS: TabConfig[] = [
+  {
+    name: 'index',
+    label: 'Home',
+    icon: 'home-outline',
+    iconActive: 'home',
+  },
+  {
+    name: 'product',
+    label: 'Products',
+    icon: 'cube-outline',
+    iconActive: 'cube',
+  },
+  {
+    name: 'sale',
+    label: 'Sales',
+    icon: 'cart-outline',
+    iconActive: 'cart',
+  },
+  // {
+  //   name: 'report',
+  //   label: 'Reports',
+  //   icon: 'bar-chart-outline',
+  //   iconActive: 'bar-chart',
+  // },
+  {
+    name: 'profile',
+    label: 'Profile',
+    icon: 'person-outline',
+    iconActive: 'person',
+  },
+];
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
-        }}
-      />
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
+    >
+      <Tabs.Screen name='index' />
+      <Tabs.Screen name='product' />
+      <Tabs.Screen name='sale' />
+      {/* <Tabs.Screen name='report' /> */}
+      <Tabs.Screen name='profile' />
     </Tabs>
   );
 }
